@@ -1,55 +1,59 @@
-const bcrypt = require("bcryptjs")
 const express = require("express")
-const userModel = require("../users/user-model")
+const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
-const secrets = require("../config/secrets")
+const Users = require("./user-model")
 
 const router = express.Router()
 
 router.post("/register", async (req, res, next) => {
-    try {
-        const saved = await userModel.add(req.body)
+	try {
+		const { username } = req.body
+		const user = await Users.findBy({ username }).first()
 
-        res.status(201).json(saved)
-    } catch(err) {
-        next(err)
-    }
+		if (user) {
+			return res.status(409).json({
+				message: "Username is already taken",
+			})
+		}
+
+		res.status(201).json(await Users.add(req.body))
+	} catch(err) {
+		next(err)
+	}
 })
 
 router.post("/login", async (req, res, next) => {
-    try {
-        const { username, password } = req.body
-        const user = await userModel.findBy({ username }).first()
-        const valid = await bcrypt.compare(password, user.password)
+	const authError = {
+		message: "Invalid Credentials",
+	}
 
-        if (user && valid) {
-            const token = generateToken(user)
-            req.session.user = user
-            res.status(200).json({
-                message: `welcome ${user.username}`,
-                token
-            })
-        } else {
-            res.status(401).json({
-                message: "please dont brute force me"
-            })
+	try {
+		const { username, password } = req.body
+
+		const user = await Users.findBy({ username }).first()
+		if (!user) {
+			return res.status(401).json(authError)
+		}
+
+		const passwordValid = await bcrypt.compare(password, user.password)
+		if (!passwordValid) {
+			return res.status(401).json(authError)
         }
-    } catch(err) {
-        next(err)
-    }
+        
+		const payload = {
+			userId: user.id,
+			userRole: "admin"
+		}
+        const token = jwt.sign(payload, "asdfjkl;qwertyuiopzxcvbnm")
+        
+		res.cookie("token", token)
+		
+		res.json({
+			message: `Welcome ${user.username}!`,
+		})
+	} catch(err) {
+		next(err)
+	}
 })
-
-function generateToken(user) {
-    const payload = {
-        subject: user.id,
-        username: user.username
-    }
-    const secret = secrets.jwtSecret
-    const options = {
-        expiresIn: "8h"
-    }
-
-    return jwt.sign(payload, secret, options)
-}
 
 module.exports = router

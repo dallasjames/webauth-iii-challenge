@@ -15,16 +15,4 @@ const router = express.Router()
     }
   })
 
-  router.get("/logout", restricted(), async (req, res, next) => {
-    req.session.destroy((err) => {
-      if (err) {
-        next(err)
-      } else {
-        res.json({
-          message: "bye felica"
-        })
-      }
-    })
-  })
-
 module.exports = router

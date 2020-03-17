@@ -1,30 +1,12 @@
 const express = require("express")
 const server = express()
+const cookieParser = require("cookie-parser")
 const auth = require("./auth/auth-route")
-const users = require("./users/user-router")
-const session = require("express-session")
-const KnexSessionStore = require("connect-session-knex")(session)
-const dbConfig = require("./database/dbConfig")
+const users = require("./auth/user-router")
 const port = 5000
 
-const sessionConfig = {
-    name: "token",
-    secret: "secrets is hard",
-    resave: false,
-    savedUninitialized: false,
-    cookie: {
-        maxAge: 1000 * 60 * 60 * 24 * 7,
-        secure: false,
-        httpOnly: true
-    },
-    store: new KnexSessionStore({
-        knex: dbConfig,
-        createtable: true
-    })
-}
-
 server.use(express.json())
-server.use(session(sessionConfig))
+server.use(cookieParser())
 server.use("/api", auth)
 server.use("/api", users)
 
